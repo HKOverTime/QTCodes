@@ -6,29 +6,29 @@ sockDateTurnel::sockDateTurnel(qintptr s1Descriptor, qintptr s2Descriptor)
     this->s2d = s2Descriptor;
     this->in = NULL;
     this->out = NULL;
+    run_state = 1;
 }
 
 void sockDateTurnel::run(){
     in = new QTcpSocket;
     in->setSocketDescriptor(s1d);
+
     out = new QTcpSocket;
     out->setSocketDescriptor(s2d);
-    while(1){
+
+    while(1==run_state){
         try{
-            if(in!=NULL){
+            if(this->s1d == in->socketDescriptor() && this->s2d == out->socketDescriptor()){
                 in->waitForReadyRead(-1);
                 buffer = in->readAll();
-                if(buffer.length()>=0 && out!=NULL){
+                qDebug()<<"Recv Sth ! \n";
+                if(buffer.length()>=0 ){
                     out->write(buffer);
                     out->waitForBytesWritten(-1);
                 }
-                else{
-                    qDebug()<< "read buffer Error ! \n"<< endl;
-                    break;
-                }
             }
             else{
-                qDebug()<< "in stream is NULL ! \n"<< endl;
+                qDebug()<< "the stream is error ! \n"<< endl;
                 break;
             }
         }
@@ -37,4 +37,16 @@ void sockDateTurnel::run(){
             break;
         }
     }
+    CloseSocks();
+    return ;
+}
+
+void sockDateTurnel::CloseSocks(){
+    this->run_state = 0;
+    qDebug()<< "one way close \n";
+    return ;
+}
+
+int sockDateTurnel::RunningNow(){
+    return this->run_state;
 }

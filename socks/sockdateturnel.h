@@ -6,8 +6,10 @@
 
 class sockDateTurnel : public QThread
 {
+    Q_OBJECT
 public:
     sockDateTurnel(qintptr s1Descriptor, qintptr s2Descriptor);
+    int RunningNow();
     void run();
 private:
     qintptr s1d;
@@ -15,6 +17,10 @@ private:
     QTcpSocket *in;
     QTcpSocket *out;
     QByteArray buffer;
+    int run_state;
+
+    void CloseSocks();
+
 };
 
 #endif // SOCKDATETURNEL_H
