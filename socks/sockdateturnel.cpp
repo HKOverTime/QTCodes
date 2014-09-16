@@ -21,14 +21,14 @@ void sockDateTurnel::run(){
             if(this->s1d == in->socketDescriptor() && this->s2d == out->socketDescriptor()){
                 in->waitForReadyRead(-1);
                 buffer = in->readAll();
-                qDebug()<<"Recv Sth ! \n";
+//                qDebug()<<"Recv Sth ! \n";
                 if(buffer.length()>=0 ){
                     out->write(buffer);
                     out->waitForBytesWritten(-1);
                 }
             }
             else{
-                qDebug()<< "the stream is error ! \n"<< endl;
+                qDebug()<< "<<<the stream is error ! \n"<< endl;
                 break;
             }
         }
@@ -43,7 +43,7 @@ void sockDateTurnel::run(){
 
 void sockDateTurnel::CloseSocks(){
     this->run_state = 0;
-    qDebug()<< "one way close \n";
+    qDebug()<< "<<<<<<one way close ";
     return ;
 }
 

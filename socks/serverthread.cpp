@@ -1,46 +1,15 @@
 #include "serverthread.h"
 
 void mprint (QByteArray a){
+    // 调试状态下，输出 QByteArray 的数据
     int len =  a.length();
     for(int i=0;i<len;i++){
         qDebug()<<QString::number(a.at(i));
     }
 }
 
-QByteArray IPtoBytes(QString mip) {
-    QStringList b=mip.split(".");
-    QByteArray res ;
-    res.resize(4);
-    for (int i=0;i<4;i++){
-        res[i]= b[i].toInt();
-     //  qDebug()<< (int)res[i];
-    }
-    return res;
-}
-
-ServerThread::ServerThread(int fd, QObject *parent):QThread(parent)
-{
-    m_fd = fd;
-}
-void ServerThread::run()
-{
-    /* 在这个进程里，读取数据，写出数据 */
-    qDebug("some one connected");
-    QTcpSocket socket;
-    /* 根据手册要这么使用 */
-    if (!socket.setSocketDescriptor(m_fd)) {
-        qDebug("Socket error!");
-        return;
-    }
-    /*
-        阻塞，等待数据的到来
-    */
-
-    //  we can check the socks version here
+bool getSocket(QTcpSocket &socket,QTcpSocket &sock){
     socket.waitForReadyRead(-1);
- //   QByteArray rbuf = socket.readAll();
- //   qDebug("RCV:%s",rbuf.data());
-
     QByteArray rbuf = socket.readAll();
     QByteArray rep_req;
     rep_req.resize(2);
@@ -52,13 +21,12 @@ void ServerThread::run()
     // 2. Request
     socket.waitForReadyRead(-1);
     rbuf = socket.readAll();
-    qDebug() << "Request now !!";
+    qDebug() << ">>Request now !!";
     char mode = rbuf.at(1);
     QString address ;
     int len;
     if (rbuf.at(3)==0x01){
         // ipv4
-        qDebug() << "ipv4 !!"<< endl;
         unsigned addr = 0;
         for ( int j = 4;j<8;j++){
             char c = rbuf.at(j);
@@ -68,7 +36,6 @@ void ServerThread::run()
         len = 4+4;  // head 4byte + ip  4byte
     }
     else if (rbuf.at(3) == 0x03){
-        qDebug() << "host string !!"<< endl;
         QString adr;
         len = rbuf.at(4);
         adr = rbuf.remove(0,5);
@@ -82,16 +49,15 @@ void ServerThread::run()
     //  05 00 00 01
     reply[0] = 0x05;reply[1] = 0x00;reply[2] = 0x00;reply[3] = 0x01;
     //  may be has some exception
-    QTcpSocket sock;
     if (mode == 0x01){
-        qDebug()<<"mode == 1? ?";
+        qDebug()<<">>>mode == 1? ?";
         //  need reslove some DNS problem
         sock.connectToHost(address,port);
         if(!sock.waitForConnected(3000)){
             qDebug()<< address << port;
             qDebug()<< address.length();
             qDebug()<< "Cannot creat the connect ~ close now!";
-            return ;
+            return false;
 
         }
         else{
@@ -99,20 +65,46 @@ void ServerThread::run()
         }
     }
     else{
-        qDebug()<<"mode != 1 ??";
+        qDebug()<<"<<<mode != 1 ??";
         reply.resize(4);
         // 05 07 00 01
         reply[0] = 0x05;reply[1] = 0x07;reply[2] = 0x00;reply[3] = 0x01;
         sock.write(reply);
         sock.waitForBytesWritten(-1);
-        return ;
+        return false;
         // Command not supported
     }
     reply =reply +QByteArray("\x41\x41\x41\x41\x41\x41");
 
-    mprint(reply);
+ //   mprint(reply);
     socket.write(reply);
     socket.waitForBytesWritten(-1);
+    return true;
+}
+
+ServerThread::ServerThread(int fd, QObject *parent):QThread(parent)
+{
+    m_fd = fd;
+}
+void ServerThread::run()
+{
+    /* 在这个进程里，读取数据，写出数据 */
+    qDebug(">some one connected");
+    QTcpSocket socket;
+    QTcpSocket sock;
+    /* 根据手册要这么使用 */
+    if (!socket.setSocketDescriptor(m_fd)) {
+        qDebug("Socket error!");
+        socket.disconnect();
+        return;
+    }
+
+    //  检查 socks 协议中关键数据，并创建相应 socket 转接。
+    if(!getSocket(socket,sock)){
+        // if something wrong here forget it ~
+        socket.disconnect();
+        return ;
+    }
 
  //   sock.connectToHost(QHostAddress("127.0.0.1"),8080);
 
@@ -130,12 +122,10 @@ void ServerThread::run()
         }
    //  Thread waiting ~
     }
-/*
+    /*
         等待数据写完，不加这个函数，接收方总是只能接收到空数据，长度为0
     */
-    qDebug("\n one socks exit ! \n");
-
-
+    qDebug("<one socks exit ! ");
 }
 
 
