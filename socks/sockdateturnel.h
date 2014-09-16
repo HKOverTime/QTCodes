@@ -20,7 +20,6 @@ private:
     int run_state;
 
     void CloseSocks();
-
 };
 
 #endif // SOCKDATETURNEL_H
